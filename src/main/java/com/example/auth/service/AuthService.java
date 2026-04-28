@@ -2,6 +2,7 @@ package com.example.auth.service;
 
 import com.example.auth.dto.*;
 import com.example.auth.entity.RefreshToken;
+import com.example.auth.entity.Role;
 import com.example.auth.entity.User;
 import com.example.auth.exception.ApiException;
 import com.example.auth.repository.UserRepository;
@@ -31,6 +32,7 @@ public class AuthService {
                 .name(request.name())
                 .email(request.email())
                 .password(passwordEncoder.encode(request.password()))
+                .roles(java.util.Set.of(Role.USER))
                 .build();
 
         userRepository.save(user);
