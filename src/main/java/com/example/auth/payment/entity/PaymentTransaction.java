@@ -35,21 +35,44 @@ public class PaymentTransaction {
     @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal amount;
 
+    @Column(precision = 19, scale = 2)
+    private BigDecimal paidPrice;
+
+    @Column(length = 8)
+    private String currency;
+
+    /** iyzico conversation id (CheckoutFormInitialize conversationId). */
     @Column(length = 200)
     private String providerReference;
+
+    @Column(length = 200)
+    private String iyzicoToken;
+
+    @Column(length = 64)
+    private String iyzicoPaymentId;
 
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
+    @Column(nullable = false)
+    private Instant updatedAt;
+
     @PrePersist
     void onCreate() {
-        createdAt = Instant.now();
+        Instant now = Instant.now();
+        createdAt = now;
+        updatedAt = now;
         if (status == null) {
             status = PaymentStatus.INITIATED;
         }
         if (provider == null) {
             provider = PaymentProvider.IYZICO_MOCK;
         }
+    }
+
+    @PreUpdate
+    void onUpdate() {
+        updatedAt = Instant.now();
     }
 }
 

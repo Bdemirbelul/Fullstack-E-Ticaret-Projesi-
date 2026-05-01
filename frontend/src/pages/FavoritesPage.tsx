@@ -1,107 +1,127 @@
-import { useEffect, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Skeleton } from '../components/ui/Skeleton'
+import { ConfirmModal } from '../components/ui/ConfirmModal'
 import { useFavorites } from '../hooks/useFavorites'
-import { getProduct, type Product } from '../services/products'
+import type { Product } from '../services/products'
+import { ProductCard } from '../components/products/ProductCard'
+import { ProductOptionsModal } from '../components/products/ProductOptionsModal'
 
 export function FavoritesPage() {
   const fav = useFavorites()
-  const [items, setItems] = useState<Product[]>([])
-  const [loading, setLoading] = useState(true)
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [clearing, setClearing] = useState(false)
 
-  useEffect(() => {
-    let cancelled = false
-    setLoading(true)
-    Promise.all(fav.ids.map((id) => getProduct(id).catch(() => null)))
-      .then((res) => {
-        if (cancelled) return
-        setItems(res.filter(Boolean) as Product[])
-      })
-      .finally(() => {
-        if (cancelled) return
-        setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [fav.ids])
+  const items = useMemo<Product[]>(
+    () =>
+      fav.items.map((item) => ({
+        id: item.productId,
+        name: item.name,
+        description: item.description ?? null,
+        price: item.originalPrice,
+        stock: item.stock ?? null,
+        categoryId: null,
+        categoryName: item.categoryName ?? null,
+        categorySlug: null,
+        hasDiscount: item.hasDiscount,
+        discountPercentage: item.discountPercentage ?? null,
+        originalPrice: item.originalPrice,
+        discountedPrice: item.hasDiscount ? item.finalPrice : null,
+        finalPrice: item.finalPrice,
+        mainImageUrl: item.mainImageUrl ?? null,
+        images: [],
+      })),
+    [fav.items],
+  )
 
   return (
     <div className="space-y-6">
       <div className="flex items-end justify-between">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Favorites</h1>
+          <h1 className="text-3xl font-semibold tracking-tight">Favorilerim</h1>
           <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-            Kaydettiğin ürünleri burada tutuyoruz (local).
+            Favori ürünlerini hesabına bağlı olarak görüntülüyorsun.
           </p>
         </div>
         <Button
           variant="secondary"
-          disabled={fav.ids.length === 0}
+          disabled={!fav.isAuthed || fav.loading || items.length === 0}
           onClick={() => {
-            fav.clear()
-            toast.success('Temizlendi.')
+            setConfirmOpen(true)
           }}
         >
-          Clear
+          Temizle
         </Button>
       </div>
 
-      {fav.ids.length === 0 ? (
+      {!fav.isAuthed ? (
         <Card className="p-8">
           <div className="text-sm text-zinc-600 dark:text-zinc-400">
-            Favorilerin boş. <Link to="/" className="font-medium text-zinc-900 dark:text-white">Ürünlere dön</Link>.
+            Favorileri görmek için{' '}
+            <Link to="/login" className="font-medium text-zinc-900 dark:text-white">
+              giriş yapmalısınız
+            </Link>
+            .
+          </div>
+        </Card>
+      ) : fav.loading ? (
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+          {[1, 2, 3].map((id) => (
+            <Card key={id} className="overflow-hidden">
+              <Skeleton className="aspect-[4/3] w-full rounded-none" />
+            </Card>
+          ))}
+        </div>
+      ) : items.length === 0 ? (
+        <Card className="p-8">
+          <div className="text-sm text-zinc-600 dark:text-zinc-400">
+            Henüz favori ürününüz yok.{' '}
+            <Link to="/" className="font-medium text-zinc-900 dark:text-white">
+              Ürünlere dön
+            </Link>
           </div>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {loading
-            ? fav.ids.map((id) => (
-                <Card key={id} className="overflow-hidden">
-                  <Skeleton className="aspect-[4/3] w-full rounded-none" />
-                  <div className="space-y-2 p-4">
-                    <Skeleton className="h-4 w-2/3" />
-                    <Skeleton className="h-4 w-1/3" />
-                  </div>
-                </Card>
-              ))
-            : items.map((p) => (
-                <Card key={p.id} className="overflow-hidden">
-                  <div className="aspect-[4/3] w-full bg-gradient-to-br from-zinc-100 to-zinc-50 dark:from-zinc-900 dark:to-zinc-950" />
-                  <div className="space-y-3 p-4">
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-semibold">{p.name}</div>
-                      <div className="text-sm text-zinc-600 dark:text-zinc-400">
-                        {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(
-                          Number(p.price),
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Link
-                        to={`/products/${p.id}`}
-                        className="flex-1 rounded-2xl bg-zinc-100 px-3 py-2 text-center text-sm font-medium text-zinc-900 hover:bg-zinc-200 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
-                      >
-                        View
-                      </Link>
-                      <Button
-                        variant="ghost"
-                        onClick={() => {
-                          fav.remove(p.id)
-                          toast.success('Kaldırıldı.')
-                        }}
-                      >
-                        Remove
-                      </Button>
-                    </div>
-                  </div>
-                </Card>
-              ))}
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+          {items.map((p) => (
+            <ProductCard
+              key={p.id}
+              product={p}
+              onOpenOptions={(product) => {
+                setSelectedProduct(product)
+              }}
+            />
+          ))}
         </div>
       )}
+
+      <ProductOptionsModal product={selectedProduct} onClose={() => setSelectedProduct(null)} />
+      <ConfirmModal
+        isOpen={confirmOpen}
+        title="Favorileri Temizle"
+        description="Tüm favorileriniz silinsin mi?"
+        loading={clearing}
+        onCancel={() => {
+          if (clearing) return
+          setConfirmOpen(false)
+        }}
+        onConfirm={async () => {
+          try {
+            setClearing(true)
+            await fav.clear()
+            toast.success('Favoriler temizlendi.')
+            setConfirmOpen(false)
+          } catch {
+            toast.error('Favoriler temizlenirken bir hata oluştu.')
+          } finally {
+            setClearing(false)
+          }
+        }}
+      />
     </div>
   )
 }

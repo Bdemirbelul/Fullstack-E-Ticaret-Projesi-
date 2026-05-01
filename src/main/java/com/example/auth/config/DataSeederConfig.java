@@ -2,6 +2,8 @@ package com.example.auth.config;
 
 import com.example.auth.entity.Role;
 import com.example.auth.entity.User;
+import com.example.auth.entity.UserRole;
+import com.example.auth.entity.UserRoleId;
 import com.example.auth.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -31,8 +33,18 @@ public class DataSeederConfig {
                     .name("Admin")
                     .email(email)
                     .password(passwordEncoder.encode("Admin123!"))
-                    .roles(Set.of(Role.ADMIN, Role.USER))
                     .build();
+
+            UserRole adminRole = UserRole.builder()
+                    .user(admin)
+                    .id(new UserRoleId(null, Role.ADMIN))
+                    .build();
+            UserRole userRole = UserRole.builder()
+                    .user(admin)
+                    .id(new UserRoleId(null, Role.USER))
+                    .build();
+
+            admin.setUserRoles(Set.of(adminRole, userRole));
 
             userRepository.save(admin);
             log.info("Seeded default admin user: {}", email);

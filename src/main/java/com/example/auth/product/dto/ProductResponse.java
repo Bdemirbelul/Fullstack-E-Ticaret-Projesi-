@@ -9,6 +9,16 @@ public record ProductResponse(
         String description,
         BigDecimal price,
         int stock,
+        Long categoryId,
+        String categoryName,
+        String categorySlug,
+        boolean hasDiscount,
+        BigDecimal discountPercentage,
+        BigDecimal originalPrice,
+        BigDecimal discountedPrice,
+        BigDecimal finalPrice,
+        String mainImageUrl,
+        java.util.List<ProductImageResponse> images,
         Instant createdAt,
         Instant updatedAt
 ) {

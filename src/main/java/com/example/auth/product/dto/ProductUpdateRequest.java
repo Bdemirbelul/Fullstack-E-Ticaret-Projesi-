@@ -12,7 +12,8 @@ public record ProductUpdateRequest(
         @NotBlank @Size(max = 200) String name,
         @Size(max = 2000) String description,
         @NotNull @DecimalMin(value = "0.00") BigDecimal price,
-        @Min(0) int stock
+        @Min(0) int stock,
+        Long categoryId
 ) {
 }
 

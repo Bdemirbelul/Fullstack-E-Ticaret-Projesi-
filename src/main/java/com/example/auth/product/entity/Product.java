@@ -5,6 +5,8 @@ import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "products")
@@ -30,6 +32,15 @@ public class Product {
 
     @Column(nullable = false)
     private int stock;
+
+    @Column(name = "category_id")
+    private Long categoryId;
+
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ProductImage> images = new ArrayList<>();
+
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ProductDiscount> discounts = new ArrayList<>();
 
     @Column(nullable = false, updatable = false)
     private Instant createdAt;

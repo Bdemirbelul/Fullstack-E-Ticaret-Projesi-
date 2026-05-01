@@ -22,13 +22,17 @@ public class RefreshTokenService {
     private long refreshTokenExpirationMs;
 
     public RefreshToken createOrReplaceRefreshToken(User user) {
-        refreshTokenRepository.findByUser(user).ifPresent(refreshTokenRepository::delete);
+        // DB şeması `user_id` üzerinde unique kısıt içeriyorsa birden fazla token satırı açmak yerine
+        // aynı satırı güncelliyoruz.
+        RefreshToken refreshToken = refreshTokenRepository.findByUser(user).orElseGet(() ->
+                RefreshToken.builder()
+                        .user(user)
+                        .build()
+        );
 
-        RefreshToken refreshToken = RefreshToken.builder()
-                .user(user)
-                .token(UUID.randomUUID().toString())
-                .expiryDate(Instant.now().plusMillis(refreshTokenExpirationMs))
-                .build();
+        refreshToken.setToken(UUID.randomUUID().toString());
+        refreshToken.setExpiryDate(Instant.now().plusMillis(refreshTokenExpirationMs));
+        refreshToken.setRevoked(false);
 
         return refreshTokenRepository.save(refreshToken);
     }
@@ -37,15 +41,22 @@ public class RefreshTokenService {
         RefreshToken refreshToken = refreshTokenRepository.findByToken(token)
                 .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Refresh token not found"));
 
+        if (refreshToken.isRevoked()) {
+            throw new ApiException(HttpStatus.UNAUTHORIZED, "Refresh token revoked, login again");
+        }
+
         if (refreshToken.getExpiryDate().isBefore(Instant.now())) {
-            refreshTokenRepository.delete(refreshToken);
             throw new ApiException(HttpStatus.UNAUTHORIZED, "Refresh token expired, login again");
         }
 
         return refreshToken;
     }
 
-    public void invalidateByUser(User user) {
-        refreshTokenRepository.deleteByUser(user);
+    public void revokeByToken(String token) {
+        RefreshToken refreshToken = refreshTokenRepository.findByToken(token)
+                .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Refresh token not found"));
+
+        refreshToken.setRevoked(true);
+        refreshTokenRepository.save(refreshToken);
     }
 }

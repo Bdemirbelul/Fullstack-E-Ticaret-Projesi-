@@ -3,119 +3,127 @@ import { Link, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
-import { Skeleton } from '../components/ui/Skeleton'
+import {
+  clearLocalCart,
+  getItemKey,
+  getLocalCartItems,
+  getLocalCartSummary,
+  removeLocalCartItem,
+  type LocalCartItem,
+  updateLocalCartItemQuantity,
+} from '../services/localCart'
+import { type DeliveryDetailsRequest } from '../services/orders'
+import { clearCart, upsertCartItem } from '../services/cart'
+import { iyzicoCheckoutFromCart, IYZICO_CHECKOUT_SESSION_KEY } from '../services/payments'
 import { tokenStore } from '../services/tokenStore'
-import { clearCart, getCart, removeCartItem, upsertCartItem, type Cart } from '../services/cart'
+import { CheckoutDeliveryModal } from '../components/cart/CheckoutDeliveryModal'
 
-function money(v: string | number) {
+function money(v: number) {
   return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(Number(v))
 }
 
 export function CartPage() {
   const navigate = useNavigate()
-  const authed = Boolean(tokenStore.getAccess())
-
-  const [cart, setCart] = useState<Cart | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  const total = useMemo(() => (cart ? money(cart.total) : money(0)), [cart])
-
-  useEffect(() => {
-    if (!authed) {
-      setLoading(false)
+  const [items, setItems] = useState<LocalCartItem[]>([])
+  const [checkingOut, setCheckingOut] = useState(false)
+  const [checkoutOpen, setCheckoutOpen] = useState(false)
+  const summary = useMemo(() => getLocalCartSummary(items), [items])
+  async function handleCheckout(deliveryDetails: DeliveryDetailsRequest) {
+    if (!tokenStore.getAccess()) {
+      toast.error('Sipariş vermek için giriş yapmalısınız.')
+      navigate('/login')
       return
     }
-    let cancelled = false
-    setLoading(true)
-    setError(null)
-    getCart()
-      .then((res) => {
-        if (cancelled) return
-        setCart(res)
-      })
-      .catch(() => {
-        if (cancelled) return
-        setError('Sepet yüklenemedi.')
-      })
-      .finally(() => {
-        if (cancelled) return
-        setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [authed])
 
-  if (!authed) {
-    return (
-      <Card className="p-8">
-        <div className="flex flex-col items-start gap-3">
-          <div className="text-lg font-semibold">Cart</div>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Sepetini görmek için giriş yapmalısın.
-          </p>
-          <Button onClick={() => navigate('/login')}>Login</Button>
-        </div>
-      </Card>
-    )
+    setCheckingOut(true)
+    try {
+      // Backend order creation uses server-side cart, so sync local cart first.
+      await clearCart()
+      const quantitiesByProduct = new Map<number, number>()
+      for (const item of items) {
+        quantitiesByProduct.set(item.productId, (quantitiesByProduct.get(item.productId) ?? 0) + item.quantity)
+      }
+      for (const [productId, quantity] of quantitiesByProduct) {
+        await upsertCartItem(productId, quantity)
+      }
+
+      const payment = await iyzicoCheckoutFromCart({ deliveryDetails })
+
+      if (payment.paymentPageUrl) {
+        setCheckoutOpen(false)
+        window.location.href = payment.paymentPageUrl
+        return
+      }
+
+      if (payment.checkoutFormContent) {
+        sessionStorage.setItem(IYZICO_CHECKOUT_SESSION_KEY, payment.checkoutFormContent)
+        setCheckoutOpen(false)
+        navigate('/payment')
+        return
+      }
+
+      toast.error('Ödeme oturumu başlatılamadı.')
+    } catch {
+      toast.error('Ödeme başlatılırken bir hata oluştu.')
+    } finally {
+      setCheckingOut(false)
+    }
   }
+
+
+  useEffect(() => {
+    setItems(getLocalCartItems())
+  }, [])
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
       <div className="lg:col-span-2">
         <div className="mb-4 flex items-center justify-between">
-          <h1 className="text-3xl font-semibold tracking-tight">Cart</h1>
+          <h1 className="text-3xl font-semibold tracking-tight">Sepetim</h1>
           <Link
             to="/"
             className="rounded-2xl px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-900"
           >
-            Continue shopping
+            Alışverişe Devam Et
           </Link>
         </div>
 
-        {error ? (
-          <Card className="p-6">
-            <div className="text-sm text-rose-600 dark:text-rose-400">{error}</div>
-          </Card>
-        ) : null}
-
         <div className="space-y-3">
-          {loading ? (
-            Array.from({ length: 3 }).map((_, i) => (
-              <Card key={i} className="p-4">
-                <div className="flex gap-4">
-                  <Skeleton className="h-20 w-20 rounded-2xl" />
-                  <div className="flex-1 space-y-2">
-                    <Skeleton className="h-4 w-1/2" />
-                    <Skeleton className="h-4 w-1/3" />
-                    <Skeleton className="h-9 w-40" />
-                  </div>
-                </div>
-              </Card>
-            ))
-          ) : cart && cart.items.length > 0 ? (
-            cart.items.map((it) => (
-              <Card key={it.productId} className="p-4">
+          {items.length > 0 ? (
+            items.map((it) => (
+              <Card key={getItemKey(it)} className="p-4">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                  <div className="h-20 w-20 rounded-2xl bg-gradient-to-br from-zinc-100 to-zinc-50 dark:from-zinc-900 dark:to-zinc-950" />
+                  {it.imageUrl ? (
+                    <img src={it.imageUrl} alt={it.name} className="h-20 w-20 rounded-2xl object-cover" />
+                  ) : (
+                    <div className="h-20 w-20 rounded-2xl bg-gradient-to-br from-zinc-100 to-zinc-50 dark:from-zinc-900 dark:to-zinc-950" />
+                  )}
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-semibold">{it.productName}</div>
+                    <div className="truncate text-sm font-semibold">{it.name}</div>
+                    <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{it.categoryName}</div>
                     <div className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                      {money(it.unitPrice)}
+                      {it.hasDiscount ? (
+                        <>
+                          <span className="line-through text-zinc-400">{money(it.originalPrice)}</span>{' '}
+                          <span className="font-semibold text-rose-600 dark:text-rose-400">{money(it.finalPrice)}</span>
+                        </>
+                      ) : (
+                        money(it.finalPrice)
+                      )}
                     </div>
+                    {(it.selectedSize || it.selectedShoeSize || it.selectedColor) && (
+                      <div className="mt-1 text-xs text-zinc-500">
+                        {[it.selectedShoeSize, it.selectedSize, it.selectedColor].filter(Boolean).join(' • ')}
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-2">
                     <Button
                       variant="secondary"
-                      onClick={async () => {
-                        try {
-                          const next = await upsertCartItem(it.productId, Math.max(1, it.quantity - 1))
-                          setCart(next)
-                        } catch {
-                          toast.error('Güncellenemedi.')
-                        }
+                      onClick={() => {
+                        const next = updateLocalCartItemQuantity(getItemKey(it), Math.max(1, it.quantity - 1))
+                        setItems(next)
                       }}
                     >
                       −
@@ -123,13 +131,9 @@ export function CartPage() {
                     <div className="w-10 text-center text-sm">{it.quantity}</div>
                     <Button
                       variant="secondary"
-                      onClick={async () => {
-                        try {
-                          const next = await upsertCartItem(it.productId, it.quantity + 1)
-                          setCart(next)
-                        } catch {
-                          toast.error('Güncellenemedi.')
-                        }
+                      onClick={() => {
+                        const next = updateLocalCartItemQuantity(getItemKey(it), it.quantity + 1)
+                        setItems(next)
                       }}
                     >
                       +
@@ -137,20 +141,16 @@ export function CartPage() {
                   </div>
 
                   <div className="flex items-center justify-between gap-3 sm:w-48 sm:justify-end">
-                    <div className="text-sm font-medium">{money(it.lineTotal)}</div>
+                    <div className="text-sm font-medium">{money(it.totalPrice)}</div>
                     <Button
                       variant="ghost"
-                      onClick={async () => {
-                        try {
-                          const next = await removeCartItem(it.productId)
-                          setCart(next)
-                          toast.success('Kaldırıldı.')
-                        } catch {
-                          toast.error('Kaldırılamadı.')
-                        }
+                      onClick={() => {
+                        const next = removeLocalCartItem(getItemKey(it))
+                        setItems(next)
+                        toast.success('Kaldirildi.')
                       }}
                     >
-                      Remove
+                      Kaldır
                     </Button>
                   </div>
                 </div>
@@ -166,39 +166,57 @@ export function CartPage() {
 
       <div className="lg:col-span-1">
         <Card className="sticky top-20 p-6">
-          <div className="text-lg font-semibold">Order summary</div>
+          <div className="text-lg font-semibold">Sipariş Özeti</div>
           <div className="mt-4 flex items-center justify-between text-sm">
-            <div className="text-zinc-600 dark:text-zinc-400">Total</div>
-            <div className="font-semibold">{total}</div>
+            <div className="text-zinc-600 dark:text-zinc-400">Ara Toplam</div>
+            <div className="font-medium">{money(summary.subtotal)}</div>
+          </div>
+          <div className="mt-2 flex items-center justify-between text-sm">
+            <div className="text-zinc-600 dark:text-zinc-400">Indirim</div>
+            <div className="font-medium text-rose-600">- {money(summary.discountTotal)}</div>
+          </div>
+          <div className="mt-2 flex items-center justify-between text-sm">
+            <div className="text-zinc-600 dark:text-zinc-400">Toplam</div>
+            <div className="font-semibold">{money(summary.grandTotal)}</div>
           </div>
 
           <Button
             className="mt-6 w-full"
             size="lg"
-            disabled={!cart || cart.items.length === 0 || loading}
-            onClick={() => toast.success('Checkout (mock)')}
+            disabled={items.length === 0 || checkingOut}
+            onClick={() => {
+              if (!tokenStore.getAccess()) {
+                toast.error('Sipariş vermek için giriş yapmalısınız.')
+                navigate('/login')
+                return
+              }
+              setCheckoutOpen(true)
+            }}
           >
-            Checkout
+            Siparişi Tamamla
           </Button>
 
           <Button
             className="mt-3 w-full"
             variant="secondary"
-            disabled={!cart || cart.items.length === 0 || loading}
-            onClick={async () => {
-              try {
-                await clearCart()
-                setCart((c) => (c ? { ...c, items: [], total: '0' } : c))
-                toast.success('Sepet temizlendi.')
-              } catch {
-                toast.error('Sepet temizlenemedi.')
-              }
+            disabled={items.length === 0}
+            onClick={() => {
+              clearLocalCart()
+              setItems([])
+              toast.success('Sepet temizlendi.')
             }}
           >
-            Clear cart
+            Sepeti Temizle
           </Button>
         </Card>
       </div>
+
+      <CheckoutDeliveryModal
+        open={checkoutOpen}
+        loading={checkingOut}
+        onClose={() => !checkingOut && setCheckoutOpen(false)}
+        onSubmit={handleCheckout}
+      />
     </div>
   )
 }

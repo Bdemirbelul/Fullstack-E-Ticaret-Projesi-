@@ -40,11 +40,17 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/auth/**",
+                                "/health/**",
+                                "/debug/**",
+                                "/payments/iyzico/callback",
+                                "/api/payments/iyzico/callback",
                                 "/swagger-ui.html",
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**"
                         ).permitAll()
-                        .requestMatchers(HttpMethod.GET, "/products/**").permitAll()
+                        .requestMatchers("/products/**").permitAll()
+                        .requestMatchers("/categories/**").permitAll()
+                        .requestMatchers("/api/assistant/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/demo/secure").authenticated()
                         .anyRequest().authenticated()
                 )

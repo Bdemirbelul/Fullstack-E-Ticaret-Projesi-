@@ -1,4 +1,5 @@
 /target/
 /.idea/
 *.log
+tmp-app.jar
 

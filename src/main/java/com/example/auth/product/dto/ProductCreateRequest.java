@@ -11,7 +11,8 @@ public record ProductCreateRequest(
         @NotBlank @Size(max = 200) String name,
         @Size(max = 2000) String description,
         @NotNull @DecimalMin(value = "0.00") BigDecimal price,
-        @jakarta.validation.constraints.Min(0) int stock
+        @jakarta.validation.constraints.Min(0) int stock,
+        Long categoryId
 ) {
 }
 

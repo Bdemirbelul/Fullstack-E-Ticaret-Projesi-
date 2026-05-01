@@ -35,5 +35,14 @@ public class OrderItem {
 
     @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal lineTotal;
+
+    @Column(length = 20)
+    private String selectedSize;
+
+    @Column(length = 20)
+    private String selectedShoeSize;
+
+    @Column(length = 40)
+    private String selectedColor;
 }
 
