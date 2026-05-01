@@ -7,6 +7,8 @@ import { Skeleton } from '../components/ui/Skeleton'
 import { ConfirmModal } from '../components/ui/ConfirmModal'
 import { useFavorites } from '../hooks/useFavorites'
 import type { Product } from '../services/products'
+import { asArray } from '../utils/safeArray'
+import type { FavoriteProduct } from '../services/favorites'
 import { ProductCard } from '../components/products/ProductCard'
 import { ProductOptionsModal } from '../components/products/ProductOptionsModal'
 
@@ -18,7 +20,7 @@ export function FavoritesPage() {
 
   const items = useMemo<Product[]>(
     () =>
-      fav.items.map((item) => ({
+      asArray<FavoriteProduct>(fav.items).map((item) => ({
         id: item.productId,
         name: item.name,
         description: item.description ?? null,

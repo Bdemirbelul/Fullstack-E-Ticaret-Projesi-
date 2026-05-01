@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { api } from './api'
+import { asArray } from '../utils/safeArray'
 
 export type OrderItemResponse = {
   productId: number
@@ -166,11 +167,12 @@ export async function createOrder(payload: CheckoutRequest) {
 
 export async function listMyOrders(): Promise<OrderResponse[]> {
   const tryArray = async (url: string) => {
-    const { data } = await api.get<OrderResponse[] | { content: OrderResponse[] }>(url)
+    const { data } = await api.get<unknown>(url)
+    if (data == null || typeof data === 'string') return []
     let list: unknown[] = []
     if (Array.isArray(data)) list = data
-    else if (data && typeof data === 'object' && 'content' in data && Array.isArray(data.content)) {
-      list = data.content
+    else if (data && typeof data === 'object' && 'content' in data) {
+      list = asArray((data as { content: unknown }).content)
     }
     return list.map((row) => normalizeOrderResponse(row))
   }

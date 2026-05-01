@@ -47,10 +47,6 @@ export function ProductsPage() {
   }, [searchInput])
 
   useEffect(() => {
-    console.log('RAW CATEGORIES:', categories)
-  }, [categories])
-
-  useEffect(() => {
     if (!categories.length) return
 
     const params = new URLSearchParams(location.search)
@@ -231,28 +227,6 @@ export function ProductsPage() {
     }
     setShuffledProducts(shuffleArray(products))
   }, [products])
-
-  useEffect(() => {
-    console.log('RAW CATEGORIES:', categories)
-    console.log('normalizedCategories', normalizedCategories)
-    console.log('mainCategories', mainCategories)
-    console.log(
-      'Ev Yasam children',
-      getChildCategories(5).map((item) => ({ id: item.id, name: item.name, parentId: getParentId(item) })),
-    )
-    console.log('selectedCategory', selectedCategory)
-    console.log('children', selectedCategory ? getChildCategories(Number(selectedCategory.id)) : [])
-    console.log('allowedCategoryIds', selectedCategory ? getAllowedCategoryIds(selectedCategory) : [])
-    console.log(
-      'products category ids',
-      shuffledProducts.map((p) => ({
-        id: p.id,
-        name: p.name,
-        category_id: p.category_id ?? p.categoryId,
-      })),
-    )
-    console.log('filteredProducts', filteredProducts)
-  }, [categories, filteredProducts, mainCategories, normalizedCategories, selectedCategory, shuffledProducts])
 
   return (
     <section className="space-y-6">

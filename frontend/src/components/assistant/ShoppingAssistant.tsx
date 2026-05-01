@@ -119,7 +119,7 @@ export function ShoppingAssistant() {
       ])
     } catch (err) {
       let detail =
-        'Backend\'e ulaşılamıyor. Spring uygulamasının çalıştığından ve adresin doğru olduğundan emin olun (ör. http://localhost:8080).'
+        'Sunucuya ulaşılamıyor. API adresinin (VITE_API_BASE_URL) doğru olduğundan ve uygulamanın çalıştığından emin olun.'
       if (axios.isAxiosError(err)) {
         if (err.response) {
           detail = `Sunucu hatası (${err.response.status}). Asistan endpoint\'i veya Ollama ayarlarını kontrol edin.`

@@ -1,3 +1,7 @@
+/**
+ * Ödeme tamamlanınca yönlendirme backend’de yapılır (FRONTEND_BASE_URL, IYZICO_CALLBACK_URL).
+ * Bu SPA’da yalnızca API yolu kullanılır; anahtarlar istemcide yoktur.
+ */
 import { api } from './api'
 import type { DeliveryDetailsRequest } from './orders'
 

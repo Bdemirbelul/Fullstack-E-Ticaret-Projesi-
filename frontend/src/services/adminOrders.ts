@@ -1,4 +1,5 @@
 import { api } from './api'
+import { asArray } from '../utils/safeArray'
 
 export type AdminOrderStatus =
   | 'PENDING_PAYMENT'
@@ -53,8 +54,8 @@ export async function listAdminOrders(params?: {
   from?: string
   to?: string
 }) {
-  const { data } = await api.get<AdminOrder[]>('/api/admin/orders', { params })
-  return data
+  const { data } = await api.get<unknown>('/api/admin/orders', { params })
+  return asArray<AdminOrder>(data)
 }
 
 export async function getAdminOrder(id: number) {

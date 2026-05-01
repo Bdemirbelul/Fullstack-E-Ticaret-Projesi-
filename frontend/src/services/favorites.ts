@@ -1,4 +1,5 @@
 import { api } from './api'
+import { asArray } from '../utils/safeArray'
 
 export type FavoriteProduct = {
   productId: number
@@ -14,9 +15,8 @@ export type FavoriteProduct = {
 }
 
 export async function listFavorites() {
-  const { data } = await api.get<FavoriteProduct[]>('/favorites')
-  console.log('Favorites response:', data)
-  return data
+  const { data } = await api.get<unknown>('/favorites')
+  return asArray<FavoriteProduct>(data)
 }
 
 export async function addFavorite(productId: number) {

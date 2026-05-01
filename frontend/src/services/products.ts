@@ -1,4 +1,5 @@
 import { api } from './api'
+import { asArray } from '../utils/safeArray'
 
 export type Product = {
   id: number
@@ -45,17 +46,20 @@ export type ProductQuery = {
 }
 
 export async function listProducts(query?: ProductQuery) {
-  const { data } = await api.get<Product[]>('/products', { params: query })
-  return data
+  const { data } = await api.get<unknown>('/products', { params: query })
+  return asArray<Product>(data)
 }
 
 export async function getProduct(id: number) {
-  const { data } = await api.get<Product>(`/products/${id}`)
-  return data
+  const { data } = await api.get<unknown>(`/products/${id}`)
+  if (!data || typeof data !== 'object' || data === null) {
+    throw new Error('Invalid product response')
+  }
+  return data as Product
 }
 
 export async function listCategories() {
-  const { data } = await api.get<Category[]>('/categories')
-  return data
+  const { data } = await api.get<unknown>('/categories')
+  return asArray<Category>(data)
 }
 

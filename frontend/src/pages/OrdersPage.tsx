@@ -114,7 +114,8 @@ export function OrdersPage() {
         <ul className="space-y-4">
           {orders.map((o) => {
             const { label, badgeClass } = orderStatusDisplay(o.status)
-            const thumbs = o.items.slice(0, 4)
+            const orderItems = Array.isArray(o.items) ? o.items : []
+            const thumbs = orderItems.slice(0, 4)
             return (
               <li key={o.id}>
                 <Card className="overflow-hidden p-4 sm:p-5">
@@ -147,9 +148,9 @@ export function OrdersPage() {
                             )}
                           </div>
                         ))}
-                        {o.items.length > 4 ? (
+                        {orderItems.length > 4 ? (
                           <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-dashed border-zinc-300 text-xs font-medium text-zinc-500 dark:border-zinc-600 dark:text-zinc-400">
-                            +{o.items.length - 4}
+                            +{orderItems.length - 4}
                           </span>
                         ) : null}
                       </div>

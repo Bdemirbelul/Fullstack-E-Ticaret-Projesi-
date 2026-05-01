@@ -74,6 +74,7 @@ export function OrderDetailPage() {
 
   const { label, badgeClass } = orderStatusDisplay(order.status)
   const showCancel = canCustomerCancelOrder(order.status)
+  const lineItems = Array.isArray(order.items) ? order.items : []
 
   async function handleConfirmCancel() {
     if (!order) return
@@ -146,7 +147,7 @@ export function OrderDetailPage() {
           <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Ürünler</h2>
         </div>
         <ul className="divide-y divide-zinc-100 dark:divide-zinc-800">
-          {order.items.map((it, idx) => (
+          {lineItems.map((it, idx) => (
             <li key={`${order.id}-${it.productId}-${idx}`} className="flex gap-4 p-4">
               <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-zinc-200/80 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
                 {it.imageUrl ? (

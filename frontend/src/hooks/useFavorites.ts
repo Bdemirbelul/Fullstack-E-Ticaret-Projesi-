@@ -21,7 +21,11 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
   const location = useLocation()
   const [items, setItems] = useState<FavoriteProduct[]>([])
   const [loading, setLoading] = useState(false)
-  const isAuthed = Boolean(tokenStore.getAccess())
+  const [authTick, setAuthTick] = useState(0)
+
+  useEffect(() => {
+    return tokenStore.subscribe(() => setAuthTick((t) => t + 1))
+  }, [])
 
   const refresh = useCallback(async () => {
     const token = tokenStore.getAccess()
@@ -41,8 +45,12 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   useEffect(() => {
+    if (!tokenStore.getAccess()) {
+      setItems([])
+      return
+    }
     void refresh()
-  }, [refresh, location.pathname])
+  }, [refresh, location.pathname, authTick])
 
   const has = useCallback(
     (productId: number) => {
@@ -97,7 +105,7 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
     () => ({
       items,
       productIds: items.map((item) => item.productId),
-      isAuthed,
+      isAuthed: Boolean(tokenStore.getAccess()),
       loading,
       has,
       refresh,
@@ -105,7 +113,7 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
       remove,
       clear,
     }),
-    [items, isAuthed, loading, has, refresh, toggle, remove, clear],
+    [items, loading, authTick, has, refresh, toggle, remove, clear],
   )
 
   return createElement(FavoritesContext.Provider, { value }, children)

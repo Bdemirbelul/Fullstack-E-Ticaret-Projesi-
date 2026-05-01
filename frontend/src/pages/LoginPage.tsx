@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { Card } from '../components/ui/Card'
 import { Input } from '../components/ui/Input'
@@ -8,6 +8,7 @@ import { login } from '../services/auth'
 
 export function LoginPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -20,6 +21,18 @@ export function LoginPage() {
     try {
       await login(email, password)
       toast.success('Hoş geldin.')
+      const next = searchParams.get('next')
+      if (next) {
+        try {
+          const path = decodeURIComponent(next)
+          if (path.startsWith('/') && !path.startsWith('//')) {
+            navigate(path, { replace: true })
+            return
+          }
+        } catch {
+          // ignore
+        }
+      }
       navigate('/', { replace: true })
     } catch (err) {
       setError('Giriş başarısız. Bilgileri kontrol et.')
